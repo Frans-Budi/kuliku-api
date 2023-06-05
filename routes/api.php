@@ -44,4 +44,6 @@ Route::middleware(["auth:sanctum"])->group(function () {
         UserController::class,
         "uploadProfileImage",
     ]);
+
+    Route::put("update_name/{id}", [UserController::class, "updateName"]);
 });

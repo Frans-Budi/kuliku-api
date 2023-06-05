@@ -4,13 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use App\Http\Requests\LoginRequest;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Requests\RegisterRequest;
-use App\Http\Requests\UploadRequest;
-use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -237,15 +236,57 @@ class UserController extends Controller
         }
     }
 
-    // public function uploadProfileImage(Request $request)
-    // {
-    //     $uploadValidated = $request->validate([
-    //         "profile_image" => "nullable|image|file|max:1024",
-    //     ]);
+    public function updateName(Request $request, $id)
+    {
+        $nameValidated = $request->validate([
+            "name" => "string|min:3",
+        ]);
 
-    //     if ($request->file("profile_image")) {
+        $user = User::findOrFail($id);
 
-    //         $uploadValidated
-    //     }
-    // }
+        $name = $nameValidated["name"];
+
+        $user->update(["name" => $name]);
+
+        return $this->success($user);
+    }
+
+    public function uploadProfileImage(Request $request)
+    {
+        $dir = "profile-images/";
+        $image = $request->file("image");
+        $id = $request->id;
+
+        $user = User::findOrFail($id);
+        $imageUrl = "profile-images/$user->profile_image";
+
+        if ($request->has("image")) {
+            $imageName =
+                $this->generateRandomString(30) . "-" . uniqid() . "." . "png";
+
+            // Jika folder blm dibuat
+            if (!Storage::disk("public")->exists($dir)) {
+                Storage::disk("public")->makeDirectory($dir);
+            }
+            Storage::disk("public")->put(
+                $dir . $imageName,
+                file_get_contents($image)
+            );
+
+            // Jika ada gambar lama
+            if ($imageUrl != null) {
+                Storage::disk("public")->delete($imageUrl);
+            }
+        } else {
+            return $this->error("No Image!", 400);
+        }
+
+        User::where(["id" => $id])->update([
+            "profile_image" => $imageName,
+        ]);
+
+        $user = User::findOrFail($id);
+
+        return $this->success($user);
+    }
 }
